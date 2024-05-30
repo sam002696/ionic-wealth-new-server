@@ -10,7 +10,7 @@ const documentSchema = mongoose.Schema({
   email: {
     type: String,
     required: [true, "Please Enter Your Email"],
-    unique: true,
+    // unique: false,
     // validate: [validator.isEmail, "Please Enter a valid Email"],
   },
 

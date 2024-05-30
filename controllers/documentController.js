@@ -6,43 +6,90 @@ const cloudinary = require("cloudinary");
 
 // Create document -- Admin
 exports.createdocument = catchAsyncErrors(async (req, res, next) => {
-  console.log("req.body :>> ", req.body);
-  // let images = [];
+  console.log(req.files.clientAgreement);
+  const { clientAgreement, dataProtection, riskProfiler } = req.files;
+  // Destructure the input data
+  const { name, email } = req.body;
 
-  // if (typeof req.body.images === "string") {
-  //   images.push(req.body.images);
-  // } else {
-  //   images = req.body.images;
-  // }
+  // Check if all required files are provided
+  if (!clientAgreement || !dataProtection || !riskProfiler) {
+    return next(
+      new ErrorHander(
+        "All documents (clientAgreement, dataProtection, riskProfiler) are required",
+        400
+      )
+    );
+  }
 
-  // const imagesLinks = [];
+  // Upload clientAgreement to Cloudinary
 
-  // for (let i = 0; i < images.length; i++) {
-  //   const result = await cloudinary.v2.uploader.upload(images[i], {
-  //     folder: "documents",
-  //   });
+  const clientAgreementResult = await cloudinary.v2.uploader.upload(
+    clientAgreement.tempFilePath,
+    {
+      folder: "ionic_wealth/documents/client_agreement",
+    }
+  );
 
-  //   imagesLinks.push({
-  //     public_id: result.public_id,
-  //     url: result.secure_url,
-  //   });
-  // }
+  // Upload dataProtection to Cloudinary
+  const dataProtectionResult = await cloudinary.v2.uploader.upload(
+    dataProtection.tempFilePath,
+    {
+      folder: "ionic_wealth/documents/data_protection",
+    }
+  );
 
-  // req.body.images = imagesLinks;
-  //   req.body.user = req.user.id;
+  // Upload riskProfiler to Cloudinary
+  const riskProfilerResult = await cloudinary.v2.uploader.upload(
+    riskProfiler.tempFilePath,
+    {
+      folder: "ionic_wealth/documents/risk_profiler",
+    }
+  );
 
-  //   const document = await document.create(req.body);
+  // Create the document object
+  const newDocument = new document({
+    name,
+    email,
+    clientAgreement: {
+      public_id: clientAgreementResult.public_id,
+      url: clientAgreementResult.secure_url,
+    },
+    dataProtection: {
+      public_id: dataProtectionResult.public_id,
+      url: dataProtectionResult.secure_url,
+    },
+    riskProfiler: {
+      public_id: riskProfilerResult.public_id,
+      url: riskProfilerResult.secure_url,
+    },
+  });
 
-  //   res.status(201).json({
-  //     success: true,
-  //     document,
-  //   });
+  // Save the document to the database
+  await newDocument.save();
+
+  // Respond with success
+  res.status(201).json({
+    success: true,
+    document: newDocument,
+  });
 });
 
 // Get All document
 exports.getAlldocuments = catchAsyncErrors(async (req, res, next) => {
   const resultPerPage = 8;
-  const documentsCount = await document.countDocuments();
+  const { email } = req.query;
+
+  if (!email) {
+    return next(new ErrorHander("Email query parameter is required", 400));
+  }
+
+  const documentsCount = await document.countDocuments({ email });
+
+  if (documentsCount === 0) {
+    return next(
+      new ErrorHander("No documents found for the provided email", 404)
+    );
+  }
 
   const apiFeature = new ApiFeatures(document.find(), req.query)
     .search()

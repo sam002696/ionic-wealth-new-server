@@ -1,10 +1,13 @@
 const express = require("express");
-const { createdocument } = require("../controllers/documentController");
+const {
+  createdocument,
+  getAlldocuments,
+} = require("../controllers/documentController");
 const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth");
 
 const router = express.Router();
 
-// router.route("/products").get(getAllProducts);
+router.route("/documents").get(getAlldocuments);
 
 // router
 //   .route("/admin/products")
